@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChurnIQ — Predict</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0e0e0f; --bg2:#141416; --sidebar-bg:#111113;
+  --card:rgba(255,255,255,0.035); --card-border:rgba(255,255,255,0.07);
+  --accent:#e8c97e; --accent2:#c97eb4; --accent3:#7ec9c9;
+  --text:#f0ede8; --muted:rgba(240,237,232,0.4); --dim:rgba(240,237,232,0.15);
+  --mono:'DM Mono',monospace; --serif:'Playfair Display',serif; --sans:'DM Sans',sans-serif;
+  --sidebar-w:260px; --radius:12px;
+  --success:#4ade80; --warning:#fbbf24; --danger:#f87171;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;display:flex;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 600px 400px at 70% 30%,rgba(232,201,126,0.04) 0%,transparent 60%),radial-gradient(ellipse 500px 500px at 20% 70%,rgba(126,201,201,0.04) 0%,transparent 60%);}
+
+/* SIDEBAR */
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:var(--sidebar-w);background:var(--sidebar-bg);border-right:1px solid var(--card-border);z-index:200;display:flex;flex-direction:column;padding:32px 0;transition:transform 0.35s cubic-bezier(0.4,0,0.2,1);}
+.sidebar-logo{padding:0 28px 32px;border-bottom:1px solid var(--card-border);margin-bottom:8px;}
+.logo-wordmark{font-family:var(--serif);font-size:1.5rem;font-style:italic;color:var(--text);letter-spacing:-0.5px;display:block;text-decoration:none;}
+.logo-wordmark em{font-style:normal;color:var(--accent);}
+.logo-sub{font-family:var(--mono);font-size:0.58rem;letter-spacing:3px;text-transform:uppercase;color:var(--dim);margin-top:4px;display:block;}
+.sidebar-section-label{font-family:var(--mono);font-size:0.55rem;letter-spacing:3px;text-transform:uppercase;color:var(--dim);padding:20px 28px 8px;}
+.nav-item{display:flex;align-items:center;gap:12px;padding:10px 28px;text-decoration:none;color:var(--muted);font-size:0.82rem;font-weight:400;transition:all 0.2s;position:relative;}
+.nav-item::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:0;background:var(--accent);border-radius:0 2px 2px 0;transition:height 0.2s;}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.03);}
+.nav-item:hover::before{height:20px;}
+.nav-item.active{color:var(--accent);font-weight:500;background:rgba(232,201,126,0.05);}
+.nav-item.active::before{height:28px;}
+.nav-icon{width:32px;height:32px;border-radius:8px;background:var(--card);border:1px solid var(--card-border);display:flex;align-items:center;justify-content:center;font-size:0.9rem;flex-shrink:0;transition:all 0.2s;}
+.nav-item.active .nav-icon,.nav-item:hover .nav-icon{background:rgba(232,201,126,0.1);border-color:rgba(232,201,126,0.25);}
+.nav-badge{margin-left:auto;font-family:var(--mono);font-size:0.55rem;padding:2px 7px;border-radius:20px;background:rgba(232,201,126,0.12);color:var(--accent);border:1px solid rgba(232,201,126,0.2);letter-spacing:1px;}
+.sidebar-divider{height:1px;background:var(--card-border);margin:16px 28px;}
+.sidebar-bottom{margin-top:auto;padding:0 28px;}
+.status-indicator{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--card);border:1px solid var(--card-border);border-radius:var(--radius);}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);animation:blink 2.5s ease-in-out infinite;flex-shrink:0;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.status-text{font-family:var(--mono);font-size:0.62rem;color:var(--muted);}
+.status-text strong{color:var(--success);display:block;font-size:0.65rem;}
+
+/* MAIN */
+.main{margin-left:var(--sidebar-w);flex:1;position:relative;z-index:1;display:flex;flex-direction:column;}
+
+/* Topbar */
+.topbar{position:sticky;top:0;z-index:100;height:60px;background:rgba(14,14,15,0.85);backdrop-filter:blur(20px);border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;padding:0 48px;}
+.topbar-breadcrumb{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:0.65rem;color:var(--dim);}
+.topbar-breadcrumb span{color:var(--accent);}
+.topbar-actions{display:flex;align-items:center;gap:12px;}
+.tb-btn{padding:7px 16px;background:rgba(232,201,126,0.1);border:1px solid rgba(232,201,126,0.25);color:var(--accent);font-family:var(--mono);font-size:0.62rem;letter-spacing:1.5px;text-transform:uppercase;border-radius:6px;cursor:pointer;transition:all 0.2s;text-decoration:none;}
+.tb-btn:hover{background:rgba(232,201,126,0.18);}
+.tb-clock{font-family:var(--mono);font-size:0.62rem;color:var(--dim);}
+
+/* Page content */
+.content{padding:40px 48px 80px;flex:1;}
+.page-header{margin-bottom:32px;}
+.page-eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;color:var(--accent);background:rgba(232,201,126,0.08);border:1px solid rgba(232,201,126,0.18);padding:5px 12px;border-radius:20px;margin-bottom:14px;}
+.page-eyebrow::before{content:'◆';font-size:0.4rem;}
+.page-title{font-family:var(--serif);font-size:2.4rem;font-weight:700;}
+.page-title em{font-style:italic;color:var(--accent);}
+.page-desc{margin-top:8px;font-size:0.85rem;color:var(--muted);line-height:1.7;font-weight:300;}
+
+/* Layout */
+.layout{display:grid;grid-template-columns:1.2fr 0.8fr;gap:24px;align-items:start;}
+
+/* Card */
+.card{background:var(--card);border:1px solid var(--card-border);border-radius:16px;overflow:hidden;}
+.card-header{padding:18px 24px;border-bottom:1px solid var(--card-border);display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.015);}
+.card-title{font-family:var(--serif);font-size:1rem;font-weight:700;}
+.card-sub{font-family:var(--mono);font-size:0.58rem;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-top:2px;}
+.card-badge{font-family:var(--mono);font-size:0.58rem;padding:5px 10px;border-radius:6px;}
+.badge-ready{background:rgba(74,222,128,0.1);color:var(--success);border:1px solid rgba(74,222,128,0.2);}
+.card-body{padding:28px 24px;}
+
+/* Section group */
+.grp{margin-bottom:24px;}
+.grp-label{font-family:var(--mono);font-size:0.6rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--accent3);margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(126,201,201,0.12);display:flex;align-items:center;gap:8px;}
+.grp-label::before{content:'▸';color:var(--accent3);}
+
+/* Fields */
+.field{margin-bottom:14px;}
+.field label{display:block;font-family:var(--mono);font-size:0.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;}
+.field input,.field select{width:100%;background:rgba(0,0,0,0.3);border:1px solid var(--card-border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--sans);font-size:0.82rem;outline:none;transition:all 0.2s;appearance:none;}
+.field input:focus,.field select:focus{border-color:rgba(232,201,126,0.4);background:rgba(232,201,126,0.02);box-shadow:0 0 0 3px rgba(232,201,126,0.06);}
+.field input::placeholder{color:var(--dim);}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23e8c97e' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer;}
+.field select option{background:#1a1a1c;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+.btn-predict{width:100%;padding:14px;background:var(--accent);border:none;border-radius:10px;color:#0e0e0f;font-family:var(--sans);font-weight:600;font-size:0.875rem;cursor:pointer;transition:all 0.25s;position:relative;overflow:hidden;margin-top:4px;}
+.btn-predict::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);transform:translateX(-100%);transition:transform 0.5s;}
+.btn-predict:hover{box-shadow:0 8px 32px rgba(232,201,126,0.3);transform:translateY(-1px);}
+.btn-predict:hover::before{transform:translateX(100%);}
+
+/* Result */
+.result-card{display:none;}
+.result-card.show{display:block;}
+.score-wrap{text-align:center;padding:28px 24px;border-bottom:1px solid var(--card-border);}
+.ring-container{position:relative;width:130px;height:130px;margin:0 auto 16px;}
+.ring-container svg{position:absolute;top:0;left:0;width:130px;height:130px;transform:rotate(-90deg);}
+.ring-bg{fill:none;stroke:rgba(255,255,255,0.06);stroke-width:7;}
+.ring-fill{fill:none;stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1);}
+.ring-inner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+.score-pct{font-family:var(--serif);font-size:2.4rem;font-weight:700;line-height:1;}
+.score-lbl{font-family:var(--mono);font-size:0.52rem;letter-spacing:2px;color:var(--muted);}
+.risk-pill{display:inline-flex;align-items:center;gap:7px;padding:6px 16px;border-radius:20px;font-family:var(--mono);font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.risk-low{background:rgba(74,222,128,0.1);color:var(--success);border:1px solid rgba(74,222,128,0.25);}
+.risk-medium{background:rgba(251,191,36,0.1);color:var(--warning);border:1px solid rgba(251,191,36,0.25);}
+.risk-high{background:rgba(248,113,113,0.1);color:var(--danger);border:1px solid rgba(248,113,113,0.25);}
+.risk-desc{font-family:var(--mono);font-size:0.6rem;color:var(--muted);margin-top:6px;}
+
+.insights-row{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--card-border);border-top:1px solid var(--card-border);}
+.insight-cell{background:var(--bg);padding:14px 18px;}
+.ic-lbl{font-family:var(--mono);font-size:0.55rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.ic-val{font-family:var(--serif);font-size:1.1rem;font-weight:700;color:var(--accent);}
+
+.factors-wrap{padding:20px 24px;}
+.factors-title{font-family:var(--mono);font-size:0.58rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+.factor-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.factor-name{font-family:var(--mono);font-size:0.65rem;color:var(--muted);width:120px;flex-shrink:0;}
+.factor-track{flex:1;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;}
+.factor-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent3));border-radius:2px;transition:width 1s ease;width:0;}
+.factor-val{font-family:var(--mono);font-size:0.62rem;color:var(--accent);width:28px;text-align:right;flex-shrink:0;}
+
+.action-chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 24px 20px;}
+.action-chip{padding:6px 12px;font-family:var(--mono);font-size:0.62rem;border:1px solid var(--card-border);border-radius:6px;color:var(--muted);background:var(--card);}
+
+.btn-save{width:calc(100% - 48px);margin:0 24px 24px;padding:12px;border:1px solid rgba(232,201,126,0.2);background:transparent;color:var(--accent);font-family:var(--sans);font-size:0.82rem;font-weight:500;border-radius:8px;cursor:pointer;transition:all 0.2s;}
+.btn-save:hover{background:rgba(232,201,126,0.08);}
+
+/* Empty state */
+.empty-state{min-height:280px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;padding:40px;}
+.empty-icon{font-size:2.2rem;opacity:0.3;}
+.empty-title{font-family:var(--serif);font-size:1.1rem;color:var(--muted);}
+.empty-sub{font-family:var(--mono);font-size:0.62rem;color:var(--dim);text-align:center;max-width:220px;line-height:1.7;}
+
+/* Recent */
+.recent-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.04);}
+.recent-item:last-child{border-bottom:none;}
+.ri-main{font-family:var(--mono);font-size:0.7rem;color:var(--text);}
+.ri-time{font-family:var(--mono);font-size:0.58rem;color:var(--muted);margin-top:2px;}
+.badge{padding:3px 10px;font-family:var(--mono);font-size:0.58rem;letter-spacing:1px;text-transform:uppercase;border-radius:5px;}
+.badge-low{background:rgba(74,222,128,0.1);color:var(--success);}
+.badge-medium{background:rgba(251,191,36,0.1);color:var(--warning);}
+.badge-high{background:rgba(248,113,113,0.1);color:var(--danger);}
+
+/* hamburger */
+.hamburger{display:none;position:fixed;top:14px;left:14px;z-index:300;width:40px;height:40px;border-radius:10px;background:var(--sidebar-bg);border:1px solid var(--card-border);cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:5px;}
+.hamburger span{display:block;width:18px;height:1.5px;background:var(--text);border-radius:2px;}
+.overlay{display:none;position:fixed;inset:0;z-index:150;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);}
+
+@media(max-width:1000px){.layout{grid-template-columns:1fr;}.row3{grid-template-columns:1fr 1fr;}}
+@media(max-width:768px){.sidebar{transform:translateX(-100%);}.sidebar.open{transform:translateX(0);}.main{margin-left:0;}.content{padding:24px 20px 60px;}.topbar{padding:0 20px 0 64px;}.hamburger{display:flex;}.overlay.show{display:block;}.row2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+<div class="overlay" id="overlay"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <a href="/" class="logo-wordmark">Churn<em>IQ</em></a>
+    <span class="logo-sub">Predictive Analytics</span>
+  </div>
+  <div class="sidebar-section-label">Navigation</div>
+  <a href="/" class="nav-item"><div class="nav-icon">🏠</div>Home</a>
+  <a href="/predict" class="nav-item active"><div class="nav-icon">⚡</div>Predict<span class="nav-badge">LIVE</span></a>
+  <a href="/history" class="nav-item"><div class="nav-icon">📊</div>History</a>
+  <a href="/contact" class="nav-item"><div class="nav-icon">✉️</div>Contact</a>
+  <div class="sidebar-divider"></div>
+  <div class="sidebar-section-label">Quick Actions</div>
+  <a href="/predict" class="nav-item"><div class="nav-icon">🚀</div>Launch Model</a>
+  <div class="sidebar-bottom">
+    <div class="status-indicator">
+      <div class="status-dot"></div>
+      <div class="status-text"><strong>System Online</strong><span id="liveTime">— UTC</span></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-breadcrumb">ChurnIQ &nbsp;/&nbsp; <span>Predict</span></div>
+    <div class="topbar-actions">
+      <span class="tb-clock" id="topClock">—</span>
+      <a href="/history" class="tb-btn">View History</a>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="page-header">
+      <div class="page-eyebrow">Prediction Engine</div>
+      <h1 class="page-title">Run Churn <em>Prediction</em></h1>
+      <p class="page-desc">Enter all 20 customer features for a comprehensive risk assessment and recommended actions.</p>
+    </div>
+
+    <div class="layout">
+      <!-- Form -->
+      <div class="card">
+        <div class="card-header">
+          <div><div class="card-title">Customer Data Input</div><div class="card-sub">// 20 feature fields</div></div>
+          <div class="card-badge badge-ready">● Ready</div>
+        </div>
+        <div class="card-body">
+
+          <div class="grp">
+            <div class="grp-label">Personal Information</div>
+            <div class="row2">
+              <div class="field"><label>Gender</label>
+                <select id="gender"><option value="">Select…</option><option value="0">Female</option><option value="1">Male</option></select></div>
+              <div class="field"><label>Senior Citizen</label>
+                <select id="seniorCitizen"><option value="">Select…</option><option value="0">No</option><option value="1">Yes</option></select></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Partner</label>
+                <select id="partner"><option value="">Select…</option><option value="0">No</option><option value="1">Yes</option></select></div>
+              <div class="field"><label>Dependents</label>
+                <select id="dependents"><option value="">Select…</option><option value="0">No</option><option value="1">Yes</option></select></div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="grp-label">Account Information</div>
+            <div class="field"><label>Tenure (Months)</label>
+              <input type="number" id="tenure" placeholder="e.g. 24" min="0" max="72"></div>
+            <div class="row2">
+              <div class="field"><label>Contract</label>
+                <select id="contract"><option value="">Select…</option><option value="0">Month-to-Month</option><option value="1">One Year</option><option value="2">Two Year</option></select></div>
+              <div class="field"><label>Paperless Billing</label>
+                <select id="paperlessBilling"><option value="">Select…</option><option value="0">No</option><option value="1">Yes</option></select></div>
+            </div>
+            <div class="field"><label>Payment Method</label>
+              <select id="paymentMethod"><option value="">Select…</option><option value="0">Bank Transfer (Auto)</option><option value="1">Credit Card (Auto)</option><option value="2">Electronic Check</option><option value="3">Mailed Check</option></select></div>
+          </div>
+
+          <div class="grp">
+            <div class="grp-label">Services Subscribed</div>
+            <div class="row2">
+              <div class="field"><label>Phone Service</label>
+                <select id="phoneService"><option value="">Select…</option><option value="0">No</option><option value="1">Yes</option></select></div>
+              <div class="field"><label>Multiple Lines</label>
+                <select id="multipleLines"><option value="">Select…</option><option value="0">No</option><option value="1">Yes</option></select></div>
+            </div>
+            <div class="field"><label>Internet Service</label>
+              <select id="internetService"><option value="">Select…</option><option value="0">No Internet</option><option value="1">DSL</option><option value="2">Fiber Optic</option></select></div>
+            <div class="row3">
+              <div class="field"><label>Online Security</label>
+                <select id="onlineSecurity"><option value="">—</option><option value="0">No</option><option value="1">Yes</option></select></div>
+              <div class="field"><label>Online Backup</label>
+                <select id="onlineBackup"><option value="">—</option><option value="0">No</option><option value="1">Yes</option></select></div>
+              <div class="field"><label>Device Protect</label>
+                <select id="deviceProtection"><option value="">—</option><option value="0">No</option><option value="1">Yes</option></select></div>
+            </div>
+            <div class="row3">
+              <div class="field"><label>Tech Support</label>
+                <select id="techSupport"><option value="">—</option><option value="0">No</option><option value="1">Yes</option></select></div>
+              <div class="field"><label>Streaming TV</label>
+                <select id="streamingTV"><option value="">—</option><option value="0">No</option><option value="1">Yes</option></select></div>
+              <div class="field"><label>Streaming Movies</label>
+                <select id="streamingMovies"><option value="">—</option><option value="0">No</option><option value="1">Yes</option></select></div>
+            </div>
+          </div>
+
+          <div class="grp">
+            <div class="grp-label">Billing Data</div>
+            <div class="row2">
+              <div class="field"><label>Monthly Charges ($)</label>
+                <input type="number" id="monthlyCharges" placeholder="65.50" step="0.01" min="0"></div>
+              <div class="field"><label>Total Charges ($)</label>
+                <input type="number" id="totalCharges" placeholder="1572.00" step="1" min="0"></div>
+            </div>
+          </div>
+
+          <button class="btn-predict" onclick="runPrediction()">⚡ Execute Prediction</button>
+        </div>
+      </div>
+
+      <!-- Right column -->
+      <div>
+        <!-- Result -->
+        <div class="card result-card" id="resultCard" style="margin-bottom:20px;">
+          <div class="card-header">
+            <div><div class="card-title">Prediction Output</div><div class="card-sub">// Analysis complete</div></div>
+          </div>
+          <div class="score-wrap">
+            <div class="ring-container">
+              <svg viewBox="0 0 130 130">
+                <circle class="ring-bg" cx="65" cy="65" r="54"/>
+                <circle class="ring-fill" id="scoreRing" cx="65" cy="65" r="54" stroke="#e8c97e" stroke-dasharray="339.3" stroke-dashoffset="339.3"/>
+              </svg>
+              <div class="ring-inner">
+                <div class="score-pct" id="resultScore">—</div>
+                <div class="score-lbl">CHURN PROB</div>
+              </div>
+            </div>
+            <div class="risk-pill" id="riskBadge"></div>
+            <div class="risk-desc" id="riskDesc"></div>
+          </div>
+          <div class="insights-row" id="insightGrid"></div>
+          <div class="factors-wrap">
+            <div class="factors-title">Factor Influence Analysis</div>
+            <div id="factorList"></div>
+          </div>
+          <div class="action-chips" id="actionChips"></div>
+          <button class="btn-save" onclick="savePrediction()">💾 Save to History</button>
+        </div>
+
+        <!-- Empty state -->
+        <div class="card" id="emptyState" style="margin-bottom:20px;">
+          <div class="empty-state">
+            <div class="empty-icon">🎯</div>
+            <div class="empty-title">Awaiting Input</div>
+            <div class="empty-sub">Fill in customer data and run prediction to see results here.</div>
+          </div>
+        </div>
+
+        <!-- Recent -->
+        <div class="card">
+          <div class="card-header">
+            <div><div class="card-title">Recent Predictions</div><div class="card-sub">// Last 5 results</div></div>
+          </div>
+          <div class="card-body" id="recentList">
+            <div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);">No predictions yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function tick(){const t=new Date().toISOString().replace('T',' ').slice(0,19)+' UTC';document.getElementById('liveTime').textContent=t;document.getElementById('topClock').textContent=t;}
+tick();setInterval(tick,1000);
+
+function getVal(id){const v=document.getElementById(id).value;return v===''?null:parseFloat(v);}
+
+function runPrediction(){
+  const f={gender:getVal('gender'),seniorCitizen:getVal('seniorCitizen'),partner:getVal('partner'),dependents:getVal('dependents'),tenure:getVal('tenure'),phoneService:getVal('phoneService'),multipleLines:getVal('multipleLines'),internetService:getVal('internetService'),onlineSecurity:getVal('onlineSecurity'),onlineBackup:getVal('onlineBackup'),deviceProtection:getVal('deviceProtection'),techSupport:getVal('techSupport'),streamingTV:getVal('streamingTV'),streamingMovies:getVal('streamingMovies'),contract:getVal('contract'),paperlessBilling:getVal('paperlessBilling'),paymentMethod:getVal('paymentMethod'),monthlyCharges:getVal('monthlyCharges'),totalCharges:getVal('totalCharges')};
+  if(Object.values(f).filter(v=>v!==null).length<3){alert('Please fill at least 3 fields.');return;}
+
+  let risk=0.18;
+  const tenure=f.tenure??24,monthly=f.monthlyCharges??65;
+  risk+=Math.max(0,(1-tenure/72))*0.22;
+  if(f.contract!==null){if(f.contract===0)risk+=0.28;else if(f.contract===1)risk+=0.06;else risk-=0.08;}
+  risk+=((monthly-20)/100)*0.15;
+  if(f.internetService!==null){if(f.internetService===2)risk+=0.12;else if(f.internetService===0)risk-=0.06;}
+  if(f.paymentMethod!==null){if(f.paymentMethod===2)risk+=0.10;else if(f.paymentMethod===0||f.paymentMethod===1)risk-=0.06;}
+  if(f.paperlessBilling===1)risk+=0.05;
+  if(f.onlineSecurity===1)risk-=0.07;if(f.techSupport===1)risk-=0.07;
+  if(f.onlineBackup===1)risk-=0.04;if(f.deviceProtection===1)risk-=0.03;
+  if(f.seniorCitizen===1)risk+=0.06;if(f.partner===1)risk-=0.04;if(f.dependents===1)risk-=0.05;
+  if(f.streamingTV===1)risk+=0.03;if(f.streamingMovies===1)risk+=0.03;if(f.multipleLines===1)risk+=0.02;
+  risk+=(Math.random()*0.04-0.02);
+  risk=Math.min(0.97,Math.max(0.03,risk));
+  const pct=Math.round(risk*100);
+
+  const factors=[
+    {name:'Contract Type',val:f.contract!==null?[28,6,0][f.contract]:14},
+    {name:'Tenure',val:Math.round(Math.max(0,(1-tenure/72)*22))},
+    {name:'Monthly Charges',val:Math.round(Math.min(15,Math.max(0,(monthly-20)/100*15)))},
+    {name:'Internet Service',val:f.internetService===2?12:f.internetService===1?5:2},
+    {name:'Payment Method',val:f.paymentMethod===2?10:f.paymentMethod===null?5:3},
+    {name:'Online Security',val:f.onlineSecurity===1?7:3},
+    {name:'Tech Support',val:f.techSupport===1?7:3},
+    {name:'Senior Citizen',val:f.seniorCitizen===1?6:1}
+  ].sort((a,b)=>b.val-a.val).slice(0,6);
+  const maxF=Math.max(...factors.map(x=>x.val),1);
+
+  let level,cls,desc;
+  if(risk<0.35){level='Low Risk';cls='low';desc='Customer likely to retain.';}
+  else if(risk<0.65){level='Med Risk';cls='medium';desc='Monitor this customer closely.';}
+  else{level='High Risk';cls='high';desc='Immediate retention action needed.';}
+
+  document.getElementById('emptyState').style.display='none';
+  const rc=document.getElementById('resultCard');rc.classList.add('show');
+
+  const scoreEl=document.getElementById('resultScore');
+  scoreEl.textContent=pct+'%';
+  const colors={low:'var(--success)',medium:'var(--warning)',high:'var(--danger)'};
+  scoreEl.style.color=colors[cls];
+
+  const ring=document.getElementById('scoreRing');
+  ring.style.stroke=colors[cls];
+  const circ=2*Math.PI*54;
+  ring.setAttribute('stroke-dasharray',circ);
+  ring.setAttribute('stroke-dashoffset',circ);
+  setTimeout(()=>{ring.style.strokeDashoffset=circ-(circ*pct/100);},100);
+
+  const badge=document.getElementById('riskBadge');
+  badge.textContent='● '+level;badge.className='risk-pill risk-'+cls;
+  document.getElementById('riskDesc').textContent=desc;
+
+  const cLabels=['Month-to-Month','One Year','Two Year'];
+  const nLabels=['No Internet','DSL','Fiber Optic'];
+  document.getElementById('insightGrid').innerHTML=[
+    {l:'Tenure',v:f.tenure!==null?f.tenure+'M':'N/A'},
+    {l:'Contract',v:f.contract!==null?cLabels[f.contract]:'N/A'},
+    {l:'Monthly',v:f.monthlyCharges!==null?'$'+f.monthlyCharges.toFixed(2):'N/A'},
+    {l:'Internet',v:f.internetService!==null?nLabels[f.internetService]:'N/A'}
+  ].map(i=>`<div class="insight-cell"><div class="ic-lbl">${i.l}</div><div class="ic-val">${i.v}</div></div>`).join('');
+
+  document.getElementById('factorList').innerHTML=factors.map((fac,i)=>`
+    <div class="factor-row"><div class="factor-name">${fac.name}</div>
+    <div class="factor-track"><div class="factor-fill" id="fb-${i}"></div></div>
+    <div class="factor-val">${fac.val}%</div></div>`).join('');
+  factors.forEach((fac,i)=>{setTimeout(()=>{const el=document.getElementById('fb-'+i);if(el)el.style.width=Math.round((fac.val/maxF)*100)+'%';},100+i*60);});
+
+  const actLow=['✓ No Urgent Action','📧 Satisfaction Survey','🎁 Loyalty Reward','📈 Upsell'];
+  const actMed=['📞 Check-in Call','🎁 Offer Discount','📋 Review Account','🔄 Annual Plan'];
+  const actHigh=['🚨 Urgent Outreach','💸 Retention Offer','👔 Escalate','📉 Risk Alert'];
+  const acts=cls==='low'?actLow:cls==='medium'?actMed:actHigh;
+  document.getElementById('actionChips').innerHTML=acts.map(a=>`<div class="action-chip">${a}</div>`).join('');
+
+  window._lastPrediction={tenure:f.tenure,monthly:f.monthlyCharges,total:f.totalCharges,contract:f.contract!==null?cLabels[f.contract]:'N/A',pct,level:cls,labelClass:cls,time:new Date().toLocaleString()};
+}
+
+function savePrediction(){
+  if(!window._lastPrediction)return;
+  const h=JSON.parse(localStorage.getItem('churnHistory')||'[]');
+  h.unshift(window._lastPrediction);
+  localStorage.setItem('churnHistory',JSON.stringify(h.slice(0,50)));
+  updateRecent();
+  const btn=document.querySelector('.btn-save');
+  btn.textContent='✅ Saved to History';
+  setTimeout(()=>{btn.textContent='💾 Save to History';},2000);
+}
+
+function updateRecent(){
+  const h=JSON.parse(localStorage.getItem('churnHistory')||'[]').slice(0,5);
+  const list=document.getElementById('recentList');
+  if(!h.length){list.innerHTML='<div style="font-family:var(--mono);font-size:0.65rem;color:var(--muted);">No predictions yet.</div>';return;}
+  list.innerHTML=h.map(p=>`<div class="recent-item"><div><div class="ri-main">T:${p.tenure??'?'}M · $${p.monthly??'?'}/mo · ${p.contract??'?'}</div><div class="ri-time">${p.time}</div></div><span class="badge badge-${p.labelClass}">${p.pct}% ${(p.labelClass||'').toUpperCase()}</span></div>`).join('');
+}
+updateRecent();
+
+document.getElementById('hamburger').addEventListener('click',()=>{document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');});
+document.getElementById('overlay').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('show');});
+</script>
+</body>
+</html>
